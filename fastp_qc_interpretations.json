@@ -1,0 +1,725 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Biological and NGS library prep interpretations for fastp QC metrics. Each variable contains flag logic, causes, and severity guidance for high and low deviations.",
+    "created": "2026-06-05",
+    "total_variables": 17,
+    "created_by" : "Palanikumar_Palanichamy",
+    "contact" : "Palanikumarraaj@gmail.com"
+  },
+  "variables": {
+    "read1_total_reads_retention": {
+      "display_name": "Read1 Total Reads Retention (%)",
+      "description": "Percentage of Read1 reads retained after QC filtering",
+      "unit": "percent",
+      "check_levels": ["low"],
+      "thresholds": {
+        "higher_limit": 100.0,
+        "lower_limit": 97.0
+      },
+      "interpretations": {
+        "low": {
+          "flag": "LOW_R1_RETENTION",
+          "severity": "WARNING",
+          "short_summary": "Read1 retention below expected threshold — significant read loss after QC.",
+          "biological_causes": [
+            "DNA degradation producing short or damaged fragments in DNA-seq",
+            "FFPE DNA damage causing widespread base-level errors",
+            "Low-quality input material with high percentage of compromised molecules"
+          ],
+          "library_prep_causes": [
+            "Short-insert library with read-through into adapter sequence",
+            "Failed size-selection step retaining excess short fragments",
+            "Under-ligation leaving excess unligated adapters",
+            "PCR over-amplification generating low-complexity or chimeric reads"
+          ],
+          "sequencing_causes": [
+            "Tile-level flowcell failure degrading a portion of Read1 clusters",
+            "Over-clustering causing signal bleed and increased base call errors",
+            "Reagent degradation mid-run causing late-cycle quality collapse"
+          ],
+          "recommended_action": "Check read1 length distribution and filter category breakdown. Cross-reference with too_short_reads and low_quality_reads counts. Inspect flowcell tile quality maps if available."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Read1 retention within expected range."
+        }
+      }
+    },
+    "read2_total_reads_retention": {
+      "display_name": "Read2 Total Reads Retention (%)",
+      "description": "Percentage of Read2 reads retained after QC filtering",
+      "unit": "percent",
+      "check_levels": ["low"],
+      "thresholds": {
+        "higher_limit": 100.0,
+        "lower_limit": 97.0
+      },
+      "interpretations": {
+        "low": {
+          "flag": "LOW_R2_RETENTION",
+          "severity": "WARNING",
+          "short_summary": "Read2 retention below expected threshold — significant read loss after QC.",
+          "biological_causes": [
+            "DNA degradation particularly affecting the anti-sense strand in stranded DNA-seq",
+            "FFPE-induced deamination producing C-to-T errors concentrated in later cycles",
+            "Low-integrity sample with fragmented nucleic acids"
+          ],
+          "library_prep_causes": [
+            "Short-insert library causing R2 read-through into R1 adapter sequence",
+            "Random hexamer priming artifacts creating truncated R2 reads",
+            "Strand-switching protocol issues (e.g. SMART-seq) degrading the second strand in certain cases or types",
+            "Asymmetric adapter ligation efficiency affecting R2 mate"
+          ],
+          "sequencing_causes": [
+            "R2 is sequenced after more cycles have elapsed — inherently higher quality decay",
+            "Phasing and pre-phasing errors accumulate more in R2",
+            "Platform-specific R2 signal degradation in later sequencing cycles"
+          ],
+          "recommended_action": "Compare R1 vs R2 retention to assess asymmetry. High asymmetry with R2 lower than R1 is expected in paired-end runs but extreme values warrant investigation. Check insert size distribution."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Read2 retention within expected range."
+        }
+      }
+    },
+    "total_q30_before_after_comp": {
+      "display_name": "Q30 Rate Before/After Comparison (%)",
+      "description": "Relative change in Q30 rate after QC filtering: (after - before) / after * 100. Positive = improvement after filtering.",
+      "unit": "percent_change",
+      "check_levels": ["high", "low"],
+      "thresholds": {
+        "higher_limit": 1.5,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_Q30_DELTA",
+          "severity": "WARNING",
+          "short_summary": "Large Q30 improvement after QC — many low-quality bases removed, suggesting problematic raw data.",
+          "biological_causes": [
+            "High GC content causing signal imbalance and base-call uncertainty",
+            "Repetitive genomic regions producing ambiguous cluster signals",
+            "DNA degradation introducing misincorporations across many reads"
+          ],
+          "library_prep_causes": [
+            "Low-complexity library producing phasing errors that inflate low-quality bases",
+            "PCR artifacts generating reads with systematic base-call errors",
+            "Adapter dimers with poor quality scores enriched in the raw data"
+          ],
+          "sequencing_causes": [
+            "Systematic chemistry degradation disproportionately affecting raw quality",
+            "Over-clustering causing signal bleed and widespread quality reduction",
+            "Tile or swath failures pulling down quality in a subset of clusters",
+            "Expired or degraded sequencing reagents"
+          ],
+          "recommended_action": "Investigate raw Q30 values and compare to cohort baseline. High delta indicates raw data was substantially below standard — check run metrics and reagent logs."
+        },
+        "low": {
+          "flag": "LOW_Q30_DELTA",
+          "severity": "INFO",
+          "short_summary": "Q30 rate unchanged or marginally changed after QC — raw quality was already high or filtering had minimal effect.",
+          "biological_causes": [
+            "High-quality input material with minimal base-level damage",
+            "Simple, low-GC genome or target region producing clean signal"
+          ],
+          "library_prep_causes": [
+            "Clean high-complexity library with minimal adapter contamination",
+            "Optimal PCR cycle count preserving base-call fidelity"
+          ],
+          "sequencing_causes": [
+            "Excellent run chemistry and cluster density",
+            "Could also indicate QC trimming thresholds were too permissive"
+          ],
+          "recommended_action": "Verify QC parameters were applied correctly. Near-zero Q30 delta is expected in clean runs but confirm filtering was not inadvertently skipped."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Q30 before/after comparison within expected range."
+        }
+      }
+    },
+    "total_q20_before_after_comp": {
+      "display_name": "Q20 Rate Before/After Comparison (%)",
+      "description": "Relative change in Q20 rate after QC filtering: (after - before) / after * 100. Positive = improvement after filtering.",
+      "unit": "percent_change",
+      "check_levels": ["high", "low"],
+      "thresholds": {
+        "higher_limit": 1.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_Q20_DELTA",
+          "severity": "WARNING",
+          "short_summary": "Large Q20 improvement after QC — raw quality substantially compromised across many reads.",
+          "biological_causes": [
+            "Severely degraded DNA or RNA (RIN < 5 or DIN < 3)",
+            "FFPE oxidation damage (8-oxoguanine causing G-to-T transversions)",
+            "High proportion of damaged template molecules in the input"
+          ],
+          "library_prep_causes": [
+            "Contaminating inhibitors from sample extraction affecting polymerase fidelity",
+            "Excessive PCR cycles generating error-prone amplicons",
+            "Low-input library requiring aggressive amplification"
+          ],
+          "sequencing_causes": [
+            "Severe run failure or chemistry collapse",
+            "Long read cycles with rapid quality decay beyond cycle 100",
+            "Low-complexity library causing widespread cluster mis-assignment"
+          ],
+          "recommended_action": "A high Q20 delta with high Q30 delta together confirm global quality failure in the raw run. Check if Q20 delta exceeds Q30 delta — if so, mid-quality bases are preferentially being removed suggesting a specific quality tier of damage."
+        },
+        "low": {
+          "flag": "LOW_Q20_DELTA",
+          "severity": "INFO",
+          "short_summary": "Q20 rate unchanged or marginally changed after QC.",
+          "biological_causes": [
+            "High-quality input with minimal damage"
+          ],
+          "library_prep_causes": [
+            "Clean library preparation with adequate input material"
+          ],
+          "sequencing_causes": [
+            "Good run quality with no significant error-rate inflation",
+            "Possible under-trimming if other metrics show quality issues"
+          ],
+          "recommended_action": "Near-zero Q20 delta is expected in clean runs. If Q30 delta is also low, overall run quality was good. If Q30 delta is high but Q20 is low, consider whether trimming was asymmetric."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Q20 before/after comparison within expected range."
+        }
+      }
+    },
+    "total_gc_before_after_comp": {
+      "display_name": "GC Content Before/After Comparison (%)",
+      "description": "Relative change in GC content after QC filtering: (before - after) / before * 100. Positive = GC content decreased after filtering.",
+      "unit": "percent_change",
+      "check_levels": ["high", "low"],
+      "thresholds": {
+        "higher_limit": 1.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_GC_SHIFT",
+          "severity": "WARNING",
+          "short_summary": "GC content shifted substantially after QC — filtered reads had different GC composition than retained reads.",
+          "biological_causes": [
+            "GC-rich adapter dimers or contamination preferentially removed by length/quality filters",
+            "Organismal contamination with distinct GC profile being removed"
+          ],
+          "library_prep_causes": [
+            "PCR GC bias amplifying GC-rich fragments that are then quality-filtered",
+            "Adapter dimer enrichment in GC-rich ligation junctions removed by short-read filter",
+            "Nextera/Tn5 transposase GC insertion bias creating a filterable GC-rich population"
+          ],
+          "sequencing_causes": [
+            "GC-rich reads from high-complexity regions collapsing to lower quality and being removed",
+            "GC content imbalance causing signal suppression in high-GC clusters"
+          ],
+          "recommended_action": "Cross-reference with adapter_trimmed_reads_percentage and too_short_reads. High GC shift with high adapter trimming suggests GC-rich adapter dimers. Plot GC distribution before/after to identify the shifted population."
+        },
+        "low": {
+          "flag": "LOW_GC_SHIFT",
+          "severity": "INFO",
+          "short_summary": "GC content stable before and after QC — filtering did not selectively remove GC-biased reads.",
+          "biological_causes": [
+            "Uniform GC distribution across all reads including those filtered",
+            "AT-rich genome where quality filtering is GC-neutral"
+          ],
+          "library_prep_causes": [
+            "Balanced library with no GC-related enrichment artifact",
+            "Enzymatic fragmentation producing GC-neutral fragments"
+          ],
+          "sequencing_causes": [
+            "Consistent signal across GC content range — well-balanced chemistry"
+          ],
+          "recommended_action": "Low GC shift is the expected outcome in a clean library. No action required unless GC deviation from expected species GC is observed in absolute values."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "GC before/after comparison within expected range."
+        }
+      }
+    },
+    "total_reads_before_after_comp": {
+      "display_name": "Total Reads Before/After Comparison (%)",
+      "description": "Percentage of reads lost during QC: (before - after) / before * 100.",
+      "unit": "percent",
+      "check_levels": ["high", "low"],
+      "thresholds": {
+        "higher_limit": 1.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_READS_LOSS",
+          "severity": "WARNING",
+          "short_summary": "Large proportion of reads removed during QC — significant read attrition.",
+          "biological_causes": [
+            "Degraded RNA/DNA producing short or damaged reads that fail quality or length filters",
+            "FFPE-induced damage causing widespread quality failures",
+            "High proportion of contaminating sequences (non-target organism)"
+          ],
+          "library_prep_causes": [
+            "Excess adapter dimers inflating total reads but being filtered as too-short",
+            "Over-amplification producing low-quality chimeric reads",
+            "Incorrect adapter sequence specified — reads not trimmed before quality filtering"
+          ],
+          "sequencing_causes": [
+            "PhiX or internal control reads counted and then filtered",
+            "Index hopping producing mis-assigned reads that fail barcode quality"
+          ],
+          "recommended_action": "Decompose the loss into filter categories: too_short, low_quality, too_many_N. High reads loss dominated by too_short suggests adapter/fragment-size issues; dominated by low_quality suggests run chemistry failure."
+        },
+        "low": {
+          "flag": "LOW_READS_LOSS",
+          "severity": "INFO",
+          "short_summary": "Minimal read loss during QC — high-quality library.",
+          "biological_causes": ["Clean, high-integrity input material"],
+          "library_prep_causes": ["Optimal fragment size and adapter ligation — minimal trimming needed"],
+          "sequencing_causes": ["Good run quality — low error rate across all clusters"],
+          "recommended_action": "Near-zero reads loss is ideal. Confirm QC was correctly applied if value is 0.00 — may indicate filtering step was skipped."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Total reads before/after comparison within expected range."
+        }
+      }
+    },
+    "total_bases_before_after_comp": {
+      "display_name": "Total Bases Before/After Comparison (%)",
+      "description": "Percentage of bases lost during QC: (before - after) / before * 100. Higher than reads loss because trimming also removes bases from retained reads.",
+      "unit": "percent",
+      "check_levels": ["high", "low"],
+      "thresholds": {
+        "higher_limit": 15.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_BASES_LOSS",
+          "severity": "WARNING",
+          "short_summary": "Large proportion of bases removed during QC — significant trimming or read filtering occurred.",
+          "biological_causes": [
+            "DNA degradation shortening fragments and reducing usable base yield",
+            "Short-insert library where read-through into adapter wastes sequencing bases",
+            "Heavily damaged FFPE material with high per-base error rate requiring hard trimming"
+          ],
+          "library_prep_causes": [
+            "Aggressive adapter trimming of short-insert libraries",
+            "Incorrect insert-size selection leaving many short fragments",
+            "High adapter dimer content consuming sequencing capacity"
+          ],
+          "sequencing_causes": [
+            "3-prime quality decay requiring hard clipping of read tails",
+            "Extended read length beyond insert size — all excess bases trimmed"
+          ],
+          "recommended_action": "Compare bases loss to reads loss. If bases loss >> reads loss, trimming is removing bases from many retained reads (quality or adapter trimming). If similar, entire reads are being removed. Both insert size and read length loss metrics should be reviewed together."
+        },
+        "low": {
+          "flag": "LOW_BASES_LOSS",
+          "severity": "INFO",
+          "short_summary": "Minimal base loss during QC.",
+          "biological_causes": ["High-quality input with minimal base-level damage"],
+          "library_prep_causes": ["Long inserts relative to read length — minimal adapter read-through"],
+          "sequencing_causes": ["Low error rate — minimal quality-based trimming needed"],
+          "recommended_action": "Expected in clean, long-insert libraries. Verify trimming was applied if this is unexpectedly low given other quality metrics."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Total bases before/after comparison within expected range."
+        }
+      }
+    },
+    "duplication_rate": {
+      "display_name": "Duplication Rate (%)",
+      "description": "Percentage of reads identified as PCR or optical duplicates.",
+      "unit": "percent",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 20.0,
+        "lower_limit": 1.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_DUPLICATION",
+          "severity": "WARNING",
+          "short_summary": "Duplication rate exceeds expected threshold — possible low library complexity or over-amplification.",
+          "biological_causes": [
+            "Low-complexity target region (narrow ChIP-seq peaks, amplicon sequencing)",
+            "Cell-free DNA (cfDNA) from plasma — inherently limited diversity",
+            "Small input cell number limiting unique molecule diversity",
+            "Biologically repetitive genomic regions"
+          ],
+          "library_prep_causes": [
+            "Insufficient input material requiring excessive PCR cycles (< 1 ng DNA)",
+            "Failed or inefficient size selection reducing library diversity",
+            "Carry-over contamination from a previous high-duplication library",
+            "UMI-tagged library where UMIs were not collapsed before fastp duplication assessment"
+          ],
+          "sequencing_causes": [
+            "Optical duplicates elevated by high patterned flowcell cluster density",
+            "ExAmp clustering artefacts generating optical duplicate clusters"
+          ],
+          "recommended_action": "Cross-reference with insert_size and low_quality_reads. High duplication + normal insert size suggests PCR over-amplification. High duplication + short insert size suggests low-complexity or degraded input. For ChIP/ATAC samples, use assay-specific duplication benchmarks, not WGS standards."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Duplication rate within expected range."
+        }
+      }
+    },
+    "low_quality_reads": {
+      "display_name": "Low Quality Reads (count)",
+      "description": "Number of reads removed due to failing minimum quality score threshold.",
+      "unit": "count",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 600000.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_LOW_QUALITY_READS",
+          "severity": "CRITICAL",
+          "short_summary": "Elevated low-quality read count — substantial fraction of sequencing data unusable.",
+          "biological_causes": [
+            "Heavily degraded input RNA/DNA with widespread base-level damage",
+            "FFPE sample with extensive deamination and oxidation",
+            "Samples with high inhibitor content affecting base-call signal quality"
+          ],
+          "library_prep_causes": [
+            "Low-input library with over-amplification generating high-error reads",
+            "Contaminated library with nucleases or inhibitors from extraction",
+            "PCR chimerism producing reads with systematic base errors"
+          ],
+          "sequencing_causes": [
+            "Flowcell chemistry failure or tile-level dropout causing widespread quality collapse",
+            "Reagent degradation mid-run causing late-cycle quality crash",
+            "Over-clustering causing signal bleed inflating per-base error rates",
+            "Index hopping producing mis-assigned reads with poor quality scores"
+          ],
+          "recommended_action": "High low_quality_reads is a critical flag. Examine run-level quality metrics (Q30 trends per cycle). If spatially clustered in flowcell tiles, the run has a physical failure. If uniform across tiles, input material or chemistry is the likely cause. Consider re-sequencing."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Low quality read count within acceptable range."
+        }
+      }
+    },
+    "too_many_N_reads": {
+      "display_name": "Too Many N Reads (count)",
+      "description": "Number of reads removed because they exceeded the maximum allowed N (undetermined base) count.",
+      "unit": "count",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 20000.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_N_READS",
+          "severity": "WARNING",
+          "short_summary": "Elevated undetermined base (N) read count — basecaller unable to assign bases in many reads.",
+          "biological_causes": [
+            "Extreme GC content causing signal collapse and N calling in affected regions",
+            "Strong RNA/DNA secondary structure blocking polymerase and collapsing signal",
+            "Highly repetitive regions producing ambiguous cluster signals"
+          ],
+          "library_prep_causes": [
+            "Very short insert library with reads extending entirely past the insert into adapter",
+            "Adapter dimer population that reads as poly-N after the insert",
+            "Ligation failure producing reads with no insert — reads collapse to primer sequence only"
+          ],
+          "sequencing_causes": [
+            "Choked cluster — over-clustering causing signal interference and N calling",
+            "Tile-level failure where all clusters on affected tiles call N",
+            "Index hopping or de-multiplexing failure producing reads assigned to wrong sample with N bases",
+            "Phasing/pre-phasing accumulation in very long reads causing terminal N calling"
+          ],
+          "recommended_action": "Check spatial distribution of N reads on flowcell — tile-specific failures are run QC issues. If uniform, investigate insert size and GC content. Too_many_N_reads is particularly sensitive to flowcell tile failures."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Too-many-N read count within acceptable range."
+        }
+      }
+    },
+    "too_short_reads": {
+      "display_name": "Too Short Reads (count)",
+      "description": "Number of reads removed because they fell below the minimum read length threshold after trimming.",
+      "unit": "count",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 7000.0,
+        "lower_limit": 0.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_SHORT_READS",
+          "severity": "WARNING",
+          "short_summary": "Elevated short read count — many reads trimmed below minimum length, indicating short-insert or degraded library.",
+          "biological_causes": [
+            "DNA degradation producing short fragments that read through entirely into adapter",
+            "cfDNA from plasma — inherently short fragments (~167 bp mono-nucleosomal)",
+            "Heavily fragmented FFPE DNA with very short recoverable inserts"
+          ],
+          "library_prep_causes": [
+            "Over-fragmentation — excessive sonication time, too much enzyme, or over-tagmentation",
+            "Failed or suboptimal size selection allowing short fragments to pass",
+            "Adapter dimer population: ligated adapters with no insert — entirely trimmed away",
+            "Incorrect AMPure bead ratio enriching for short fragments"
+          ],
+          "sequencing_causes": [
+            "Read length longer than insert size by design — expected for short-insert protocols",
+            "Aggressive adapter trimming settings removing long tails and leaving sub-threshold reads"
+          ],
+          "recommended_action": "Cross-reference with insert_size and read1/read2_length_loss. High too_short_reads with short insert size is a library preparation issue. High too_short_reads with normal insert size suggests adapter contamination or aggressive trimming settings."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Too-short read count within acceptable range."
+        }
+      }
+    },
+    "read1_length_loss": {
+      "display_name": "Read1 Length Loss (%)",
+      "description": "Percentage of Read1 mean length lost after QC trimming: (before - after) / before * 100.",
+      "unit": "percent",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 15.0,
+        "lower_limit": 1.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_R1_LENGTH_LOSS",
+          "severity": "WARNING",
+          "short_summary": "Significant Read1 length trimmed away — adapter contamination or 3-prime quality decay.",
+          "biological_causes": [
+            "Short-insert library where R1 overshoots the insert and reads into the adapter",
+            "DNA degradation producing short fragments — reads extend past insert into adapter",
+            "cfDNA short fragments requiring heavy trimming"
+          ],
+          "library_prep_causes": [
+            "Insert size smaller than read length — inevitable adapter read-through",
+            "Failed size selection leaving excess short fragments",
+            "Transposase (Tn5/Nextera) tagmentation producing very short fragments",
+            "Incomplete adapter cleanup leaving ligated adapters on short fragments"
+          ],
+          "sequencing_causes": [
+            "3-prime quality decay requiring hard clipping at the read tail",
+            "Aggressive quality trimming settings set below Phred 20 cutoff"
+          ],
+          "recommended_action": "Check insert_size alongside R1 length loss. If insert_size < read_length, some R1 length loss is expected. Disproportionate R1 loss vs R2 loss may indicate asymmetric adapter contamination or quality issues."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Read1 length loss within expected range."
+        }
+      }
+    },
+    "read2_length_loss": {
+      "display_name": "Read2 Length Loss (%)",
+      "description": "Percentage of Read2 mean length lost after QC trimming: (before - after) / before * 100.",
+      "unit": "percent",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 15.0,
+        "lower_limit": 1.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_R2_LENGTH_LOSS",
+          "severity": "WARNING",
+          "short_summary": "Significant Read2 length trimmed away — short inserts causing R2 read-through or 3-prime quality decay.",
+          "biological_causes": [
+            "Short-insert library — R2 reads through insert into R1 adapter or R1 itself",
+            "DNA degradation creating very short usable fragments",
+            "cfDNA mono-nucleosomal fragments (~167 bp) being read by R2 from the opposite end"
+          ],
+          "library_prep_causes": [
+            "Insert size smaller than read length — R2 reads through into R1 adapter sequence",
+            "Random hexamer priming artifacts creating truncated R2 reads in DNA-seq",
+            "Secondary structure in insert blocking extension of R2"
+          ],
+          "sequencing_causes": [
+            "R2 3-prime quality decay is inherently more severe than R1 — more cycles elapsed",
+            "Phasing accumulation reducing R2 signal quality in later cycles"
+          ],
+          "recommended_action": "R2 length loss is expected to be equal to or greater than R1 length loss in most protocols. If R2 >> R1, short insert or R2-specific quality issue. Compare with insert_size to determine if read-through is the cause."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Read2 length loss within expected range."
+        }
+      }
+    },
+    "percentage_reads_survived": {
+      "display_name": "Percentage Reads Survived (%)",
+      "description": "Percentage of total read pairs passing all QC filters.",
+      "unit": "percent",
+      "check_levels": ["low"],
+      "thresholds": {
+        "higher_limit": 100.0,
+        "lower_limit": 97.0
+      },
+      "interpretations": {
+        "low": {
+          "flag": "LOW_READ_SURVIVAL",
+          "severity": "WARNING",
+          "short_summary": "Overall read survival below threshold — compound QC failures reducing usable data substantially.",
+          "biological_causes": [
+            "Degraded input material failing multiple filter categories simultaneously",
+            "High organismal contamination where contaminating reads fail all quality criteria",
+            "FFPE samples with widespread damage producing multi-category failures"
+          ],
+          "library_prep_causes": [
+            "Wrong adapter sequence specified — reads not trimmed, then fail quality filters",
+            "Excess adapter dimers counted as reads but filtered as too-short",
+            "Over-amplification generating chimeric reads that fail quality and length thresholds"
+          ],
+          "sequencing_causes": [
+            "Run-level failure causing compound quality, N, and length failures across many reads",
+            "Index hopping inflating raw read count with mis-assigned reads that then fail QC"
+          ],
+          "recommended_action": "Decompose survival loss into component filter categories. % reads survived is the product of all individual filter pass rates. Low survival driven by one dominant category is more diagnosable than uniform loss across all categories."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Read survival rate within expected range."
+        }
+      }
+    },
+    "percentage_bases_survived": {
+      "display_name": "Percentage Bases Survived (%)",
+      "description": "Percentage of total bases passing all QC filters (includes trimming within retained reads).",
+      "unit": "percent",
+      "check_levels": ["low"],
+      "thresholds": {
+        "higher_limit": 100.0,
+        "lower_limit": 97.0
+      },
+      "interpretations": {
+        "low": {
+          "flag": "LOW_BASE_SURVIVAL",
+          "severity": "WARNING",
+          "short_summary": "Overall base survival below threshold — significant base loss through trimming and read filtering.",
+          "biological_causes": [
+            "Degraded sample producing short fragments with heavy adapter contamination",
+            "Highly damaged FFPE material where read tails are universally low quality"
+          ],
+          "library_prep_causes": [
+            "Short-insert library — substantial fraction of each read is adapter sequence",
+            "Low-complexity library generating redundant bases that are not technically 'lost' but filtered as duplicates",
+            "Incorrect size selection leaving many short adapter-containing fragments"
+          ],
+          "sequencing_causes": [
+            "3-prime quality decay requiring extensive tail clipping on most reads",
+            "Long read cycles beyond insert end — all overhang bases trimmed"
+          ],
+          "recommended_action": "Compare with percentage_reads_survived. If bases survived << reads survived, trimming is the dominant mechanism (bases removed from retained reads). If approximately equal, entire reads are being removed. Both signals require different corrective actions."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Base survival rate within expected range."
+        }
+      }
+    },
+    "insert_size": {
+      "display_name": "Insert Size (bp)",
+      "description": "Peak insert size estimated by fastp from fragment analysis.",
+      "unit": "bp",
+      "check_levels": ["low"],
+      "thresholds": {
+        "higher_limit": 200.0,
+        "lower_limit": 125.0
+      },
+      "interpretations": {
+        "low": {
+          "flag": "LOW_INSERT_SIZE",
+          "severity": "WARNING",
+          "short_summary": "Insert size below expected range — library is over-fragmented or input was degraded.",
+          "biological_causes": [
+            "DNA degradation producing short cDNA inserts in DNA-seq",
+            "cfDNA libraries where short mono-nucleosomal fragments are biologically expected (~167 bp)",
+            "FFPE-induced DNA fragmentation limiting recoverable fragment length"
+          ],
+          "library_prep_causes": [
+            "Over-sonication or excessive enzymatic fragmentation of DNA",
+            "Tn5 transposase over-activity in ATAC-seq or Nextera XT libraries",
+            "Insufficient enzyme inactivation or cleanup allowing continued fragmentation",
+            "AMPure bead ratio too high — selecting only very short fragments",
+            "Contaminating nuclease activity in sample or reagents"
+          ],
+          "sequencing_causes": [
+            "Short insert directly increases adapter read-through frequency",
+            "Increased too_short_reads and read length loss are downstream consequences"
+          ],
+          "recommended_action": "Short insert size is a primary library QC indicator. Cross-reference with too_short_reads, read1_length_loss, and duplication_rate. For cfDNA assays, low insert may be expected. For WGS/RNA-seq, short insert size indicates library prep optimisation is needed."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Insert size within expected range."
+        }
+      }
+    },
+    "adapter_timmed_reads_percentage": {
+      "display_name": "Adapter Trimmed Reads (%)",
+      "description": "Percentage of reads requiring adapter trimming: adapter_trimmed_reads / before_total_reads * 100.",
+      "unit": "percent",
+      "check_levels": ["high"],
+      "thresholds": {
+        "higher_limit": 50.0,
+        "lower_limit": 1.0
+      },
+      "interpretations": {
+        "high": {
+          "flag": "HIGH_ADAPTER_TRIMMING",
+          "severity": "WARNING",
+          "short_summary": "High proportion of reads required adapter trimming — short inserts causing widespread read-through.",
+          "biological_causes": [
+            "DNA degradation producing short cDNA fragments that read through adapter in DNA-seq",
+            "cfDNA short mono-nucleosomal fragments inherently requiring adapter trimming"
+          ],
+          "library_prep_causes": [
+            "Insert size smaller than read length — all reads will require adapter trimming",
+            "Excess adapter dimer population: fully ligated adapters with no insert",
+            "Failed or insufficient size selection allowing all insert sizes through",
+            "Over-tagmentation (ATAC-seq) producing very short nucleosome-free region fragments"
+          ],
+          "sequencing_causes": [
+            "Read length set longer than library insert size — systematic read-through expected",
+            "Adapter contamination not removed during library cleanup steps"
+          ],
+          "recommended_action": "High adapter trimming % is strongly linked to insert_size. If insert_size < read_length, this is expected and the adapter trimming is functioning correctly. Concerning when paired with low survival rate, indicating trimmed reads are also failing length filters. Check too_short_reads count alongside adapter trimming."
+        },
+        "normal": {
+          "flag": "PASS",
+          "severity": "OK",
+          "short_summary": "Adapter trimmed reads percentage within expected range."
+        }
+      }
+    }
+  }
+}

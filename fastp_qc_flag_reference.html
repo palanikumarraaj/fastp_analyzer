@@ -1,0 +1,311 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .container { padding: 16px 0; }
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-btn { padding: 5px 13px; border-radius: 20px; border: 1px solid var(--color-border-secondary); font-size: 12px; cursor: pointer; background: var(--color-background-secondary); color: var(--color-text-secondary); transition: all .15s; }
+  .filter-btn.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); }
+  .card { border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); margin-bottom: 10px; overflow: hidden; }
+  .card-header { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer; background: var(--color-background-secondary); transition: background .12s; }
+  .card-header:hover { background: var(--color-background-tertiary); }
+  .var-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; min-width: 0; }
+  .var-sub { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; white-space: nowrap; font-weight: 500; flex-shrink: 0; }
+  .tag-lib { background: #EEEDFE; color: #3C3489; }
+  .tag-bio { background: #E1F5EE; color: #085041; }
+  .tag-seq { background: #FAEEDA; color: #633806; }
+  .tag-qc  { background: #FAECE7; color: #4A1B0C; }
+  @media (prefers-color-scheme: dark) {
+    .tag-lib { background: #26215C; color: #CECBF6; }
+    .tag-bio { background: #04342C; color: #9FE1CB; }
+    .tag-seq { background: #412402; color: #FAC775; }
+    .tag-qc  { background: #4A1B0C; color: #F5C4B3; }
+  }
+  .chevron { font-size: 12px; color: var(--color-text-tertiary); transition: transform .2s; flex-shrink: 0; margin-top: 2px; }
+  .chevron.open { transform: rotate(180deg); }
+  .card-body { display: none; padding: 0 14px 14px; }
+  .card-body.open { display: block; }
+  .section { margin-top: 12px; }
+  .section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--color-text-tertiary); margin-bottom: 6px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .devbox { border-radius: 8px; padding: 9px 11px; }
+  .devbox.high { background: var(--color-background-danger); border-left: 3px solid var(--color-text-danger); }
+  .devbox.low  { background: var(--color-background-info);   border-left: 3px solid var(--color-text-info); }
+  .devbox-label { font-size: 10px; font-weight: 500; margin-bottom: 4px; }
+  .devbox.high .devbox-label { color: var(--color-text-danger); }
+  .devbox.low  .devbox-label { color: var(--color-text-info); }
+  .devbox p { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; }
+  .flag-list { margin-top: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .flag-list li { font-size: 12px; color: var(--color-text-secondary); padding-left: 14px; position: relative; line-height: 1.5; }
+  .flag-list li::before { content: "→"; position: absolute; left: 0; color: var(--color-text-tertiary); }
+  .flag-chip { display: inline-block; background: var(--color-background-warning); color: var(--color-text-warning); font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; margin-left: 4px; }
+  .note { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; margin-top: 8px; padding: 8px 10px; background: var(--color-background-tertiary); border-radius: 6px; }
+  .count { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 10px; }
+</style>
+<div class="container">
+  <h2 class="sr-only">fastp QC variable flag reference — biological and NGS causes</h2>
+  <div class="filter-row" id="filters">
+    <button class="filter-btn active" data-cat="all">All variables</button>
+    <button class="filter-btn" data-cat="lib">Library prep</button>
+    <button class="filter-btn" data-cat="bio">Biology / sample</button>
+    <button class="filter-btn" data-cat="seq">Sequencing</button>
+    <button class="filter-btn" data-cat="qc">QC / bioinformatics</button>
+  </div>
+  <div class="count" id="count"></div>
+  <div id="cards"></div>
+</div>
+<script>
+const DATA = [
+  {
+    id: "r1r2_ret",
+    name: "Read1 vs Read2 retention % asymmetry",
+    sub: "Difference in % reads kept after QC for R1 vs R2",
+    cats: ["lib","seq","qc"],
+    high: "R2 is disproportionately filtered vs R1 (or vice versa). R2 typically has lower quality at 3′ ends (flowcell phasing, signal decay). Asymmetry means one mate is systematically worse, suggesting sequencing chemistry degradation, adapter dimer contamination on one read, or unequal run quality across lanes. Can also indicate paired-end mismatches from sample swaps or FASTQ de-multiplexing errors.",
+    low: "Very similar retention — expected in high-quality runs. Near-zero asymmetry is the norm. If it drops unexpectedly low in a degraded sample batch, it may signal globally poor quality rather than a paired-read-specific issue.",
+    flags: [
+      "Adapter contamination skewed to R2 (short inserts, read-through)",
+      "Flowcell tile-level quality drop on R2",
+      "Sample FASTQ mis-pairing / de-multiplexing error",
+      "R2 primer mis-ligation in strand-switching protocols (e.g., SMART-seq)",
+      "Differential barcode quality in 10x or similar barcoded libraries"
+    ],
+    note: "In stranded RNA-seq (dUTP method), R2 reflects the coding strand — degradation of the anti-sense strand can cause asymmetric quality."
+  },
+  {
+    id: "q30",
+    name: "Q30 % deviation",
+    sub: "Fraction of bases with Phred ≥ 30 (error rate < 0.1%)",
+    cats: ["seq","qc"],
+    high: "Q30 well above cohort mean. Indicates exceptional base-calling accuracy — possible with short inserts, very high cluster density, or low-complexity regions that are easy to resolve. Occasionally arises from high-coverage low-diversity libraries (e.g., amplicons) where signal is very clean.",
+    low: "Q30 below cohort mean. Primary culprits: low cluster density (under-loading), over-clustering (signal bleed), degraded sequencing reagents, run-cycle phasing errors, or low library complexity causing phasing from identical clusters. RNA degradation in RNA-seq increases misincorporations. High GC content causes signal imbalance.",
+    flags: [
+      "Degraded reagents or expired sequencing kit",
+      "Flow cell over/under-clustering",
+      "High GC content causing polymerase pausing and misincorporation",
+      "RNA degradation → downstream base-call noise in RNA-seq",
+      "FFPE-induced DNA damage (deamination → C→T errors lower Q)",
+      "Index hopping inflating apparent mismatches",
+      "Tile-level failures on the flowcell"
+    ],
+    note: "Q30 and Q20 are related but Q30 flags early chemistry problems; Q20 is a softer cutoff and often stable when Q30 drops — monitor both."
+  },
+  {
+    id: "q20",
+    name: "Q20 % deviation",
+    sub: "Fraction of bases with Phred ≥ 20 (error rate < 1%)",
+    cats: ["seq","qc"],
+    high: "Q20 above average while Q30 is near-average may signal a bimodal quality distribution — a subset of reads with good but not excellent quality. Can occur in mixed-quality flowcell zones.",
+    low: "More severe quality failure than Q30. Widespread base-call errors. Indicates heavily degraded input material (FFPE, low-input), run failure, or systematic chemistry issue. Low Q20 with normal Q30 is unusual and may flag calibration offsets in the basecaller.",
+    flags: [
+      "Severely degraded DNA/RNA (RIN < 5)",
+      "FFPE oxidation damage (8-oxoG → transversions)",
+      "Long read cycles with rapid quality decay in later cycles",
+      "Low-complexity insert causing cluster mis-assignment",
+      "Contamination with high-salt or inhibitors affecting sequencing chemistry"
+    ],
+    note: "For WGS/WES, Q20 < 85% is a common hard-fail threshold. For RNA-seq, slightly lower thresholds are acceptable due to repetitive regions."
+  },
+  {
+    id: "gc",
+    name: "GC % deviation",
+    sub: "Mean GC content vs cohort distribution",
+    cats: ["bio","lib","seq"],
+    high: "GC above cohort mean. Biological: GC-rich species/genome regions selected (e.g., promoter-capture, CpG island enrichment). Technical: PCR over-amplification of GC-rich fragments, adapter dimer enrichment (adapters are GC-rich), rRNA contamination in RNA-seq (rRNA is GC-rich), or contaminating organisms with different GC content.",
+    low: "GC below cohort mean. Biological: AT-rich genome or sample type (Plasmodium falciparum ~19% GC, some plant genomes). Technical: PCR dropping GC-rich fragments (polymerase stalling), AT-rich adapter sequences pulled through, or degradation selectively losing GC-rich regions (CpG dinucleotides are fragile under deamination).",
+    flags: [
+      "PCR GC bias (polymerase drops or over-amplifies GC-rich fragments)",
+      "Contamination from bacteria, fungi, or reagents with different GC",
+      "rRNA/mtDNA contamination in RNA-seq",
+      "Adapter dimer enrichment shifts apparent GC up",
+      "Cell-free DNA vs genomic DNA mixture (cfDNA is enriched for open chromatin, different GC)",
+      "Wrong reference expectation — is the cohort mixed tissue/cell-type?"
+    ],
+    note: "GC deviation is one of the most biologically meaningful flags. Combine with duplication rate to distinguish PCR bias from true biology."
+  },
+  {
+    id: "r1_len",
+    name: "Read1 length loss deviation",
+    sub: "Trimmed bases from R1 vs cohort mean",
+    cats: ["lib","qc","seq"],
+    high: "R1 losing more bases than cohort average after QC trimming. Implies heavier adapter contamination or lower 3′ quality in R1. Common in short-insert libraries (small RNA, cfDNA) where the read overshoots the insert and reads into the adapter. Also seen in libraries with under-ligation leaving adapters that were not fully cleaned up.",
+    low: "R1 retaining nearly full length — minimal trimming. Expected in clean long-insert libraries. If globally low trimming in a sample with low Q30, it may mean quality trimming thresholds are too permissive or the trimmer was mis-configured.",
+    flags: [
+      "Short-insert library (insert < read length) — read-through into adapter",
+      "Failed size-selection step (lower AMPure bead ratio)",
+      "Contaminating adapter dimers",
+      "Transposase tagmentation bias creating short fragments (ATAC-seq, Nextera)",
+      "RNA degradation → short fragments in RNA-seq"
+    ],
+    note: "Read1 length loss is more informative for insert-size estimation in combination with read2 length loss."
+  },
+  {
+    id: "r2_len",
+    name: "Read2 length loss deviation",
+    sub: "Trimmed bases from R2 vs cohort mean",
+    cats: ["lib","qc","seq"],
+    high: "R2 losing substantially more than R1 — asymmetric trimming. Classic sign of paired-end read-through: R2 reads deep into the adapter or even into the R1 adapter sequence for very short inserts. Also caused by systematic 3′ quality decline which is more pronounced in R2 on most platforms.",
+    low: "Minimal R2 trimming. Same interpretation as R1 — either clean library or insufficient trimming. In RNA-seq, R2 starting from the poly-A tail direction may show early low-quality bases (random priming artifacts).",
+    flags: [
+      "Short insert + paired-end → R2 reads into R1 adapter",
+      "3′ quality decay inherent to platform chemistry (Illumina R2 is sequenced second, more cycles elapsed)",
+      "Random hexamer priming bias creating truncated R2 reads",
+      "Secondary structure in insert blocking polymerase extension"
+    ],
+    note: "R1 and R2 length loss together estimate effective insert size. Cohort-wide elevation of both is a size-selection QC flag."
+  },
+  {
+    id: "dup",
+    name: "Duplication rate deviation",
+    sub: "% reads flagged as optical or PCR duplicates",
+    cats: ["lib","bio","seq"],
+    high: "Duplication above cohort mean. Primary cause: insufficient input material → over-PCR amplification to reach target molarity. Also: low-complexity library (few unique fragments, e.g., ChIP-seq with narrow peaks or cfDNA from plasma). Optical duplicates elevated with high cluster density or patterned flowcells (ExAmp clustering). In single-cell sequencing, duplicates are expected and informative (UMI-deduplication needed).",
+    low: "Duplication below cohort mean. Implies high library complexity and adequate input. In WGS this is ideal. If unexpectedly low in a PCR-heavy protocol, the duplicate-marking tool may have failed, or PCR was inefficient (low amplification yield — check library concentration).",
+    flags: [
+      "Low DNA/RNA input → over-amplification (< 1 ng input common threshold)",
+      "Bead-based size selection removing diversity",
+      "Optical duplicates elevated by high cluster density",
+      "ChIP/ATAC narrow-peak samples have biologically high duplication",
+      "Carry-over from previous library (contamination)",
+      "UMI-based libraries: if UMIs weren't collapsed, apparent duplication inflated"
+    ],
+    note: "Target duplication rates vary widely by assay: WGS < 10–15%, RNA-seq < 30–40%, ChIP-seq can be 50–80% for narrow marks. Flag against assay-matched cohort."
+  },
+  {
+    id: "insert",
+    name: "Insert size deviation",
+    sub: "Estimated insert size (inner fragment length) vs cohort",
+    cats: ["lib","bio"],
+    high: "Insert size larger than cohort mean. Indicates less fragmentation — mechanical shearing under-performed, enzymatic fragmentation (Tn5, sonication) suboptimal, or size selection shifted right (too few beads). In ATAC-seq, large inserts are sub-nucleosomal or multi-nucleosomal fragments — a biological signal. In WGS, large inserts improve read overlap but reduce total breadth per read.",
+    low: "Insert size smaller than cohort mean. Over-fragmentation — excessive sonication, too much enzyme, DNA/RNA degradation pre-library. In cfDNA, short inserts are biologically meaningful (cfDNA ~167 bp mono-nucleosomal). Very short inserts increase adapter contamination probability and read-through. In RNA-seq, low insert = RNA degradation or strong secondary structure.",
+    flags: [
+      "Over/under-sonication in shearing-based protocols",
+      "Tn5 transposase concentration or incubation variation (ATAC-seq)",
+      "RNA degradation producing short fragments in RNA-seq",
+      "AMPure bead ratio shifted — selecting different fragment populations",
+      "FFPE cross-links causing abnormal fragmentation patterns",
+      "Contaminating nuclease activity in the sample"
+    ],
+    note: "Insert size is one of the most powerful indicators of library quality and is tightly linked to fragment size selection QC steps."
+  },
+  {
+    id: "filter_counts",
+    name: "Filter category counts elevated",
+    sub: "Count of low_quality_reads, too_many_N_reads, too_short_reads above average",
+    cats: ["bio","seq","lib","qc"],
+    high: "One or more filter category counts much higher than cohort average.",
+    low: "All filter counts near zero — clean library, as expected.",
+    flags: [
+      "too_short_reads ↑: aggressive adapter trimming of short-insert library, RNA degradation, over-fragmentation",
+      "low_quality_reads ↑: run failure, chemistry degradation, tile failure, input degradation",
+      "too_many_N_reads ↑: choked cluster leading to undetermined base calls, index hopping, sequencing on failed tiles, or sample-specific signal collapse (secondary structure, extreme GC)",
+      "All three elevated together: global sample quality failure",
+      "too_short and too_many_N elevated but not low_quality: short fragments + collapsed signal — cfDNA degradation pattern"
+    ],
+    special: true,
+    note: "Flag individual categories separately. too_many_N_reads is particularly sensitive to flowcell tile failures, which can be spatial and affect only a subset of samples loaded on the same lane."
+  },
+  {
+    id: "survival",
+    name: "% total reads survived deviation",
+    sub: "Fraction of reads passing all QC filters",
+    cats: ["qc","bio","lib"],
+    high: "Survival above cohort — clean, high-quality library. Could also indicate under-trimming if thresholds were not applied consistently. Unexpectedly high survival with low Q30 is a red flag — trimming may not have run.",
+    low: "Survival below cohort — large fraction of reads failed one or more filters. Compound failure: survival is the product of all individual filter pass rates. Even small per-filter losses multiply. Common causes: degraded sample, adapter dimer excess, PCR-induced low-complexity reads, wrong adapter sequence specified for trimming leading to retained adapters that then fail quality filters.",
+    flags: [
+      "Degraded RNA/DNA increasing low-quality and too_short reads",
+      "Wrong adapter sequence → reads not trimmed → quality-fail downstream",
+      "Severe GC-content imbalance causing widespread base-call errors",
+      "Significant index hopping producing mis-assigned low-quality reads",
+      "Over-stringent QC parameters relative to the assay type"
+    ],
+    note: "% survival should be viewed alongside the individual filter counts. A 70% survival dominated by too_short_reads is a different problem from 70% dominated by low_quality_reads."
+  },
+  {
+    id: "total_reads_bases",
+    name: "Total reads & bases (before/after) deviation",
+    sub: "Raw and post-QC read/base counts vs cohort",
+    cats: ["lib","seq","bio","qc"],
+    high: "More reads/bases than cohort average. Indicates over-sequencing, higher cluster density on that lane, pooling imbalance (this sample loaded at too-high molarity relative to others), or a genuine yield outlier. Bases-before high but bases-after similar to cohort: over-sequenced but trimmed down — wasteful but not a QC failure.",
+    low: "Fewer reads/bases than expected. Primary causes: under-loading (low library concentration, quantification error, dead volume), lane failure, pooling imbalance opposite direction, or de-multiplexing cross-contamination pulling reads to wrong sample ID. Also: very high PhiX spike diluting sample reads.",
+    flags: [
+      "Pooling molarity calculation error (library quantification by Qubit vs qPCR discordance)",
+      "Low-elution yield from library prep — final library concentration too low",
+      "Cluster density failure on that flow cell tile region",
+      "De-multiplexing index mis-assignment",
+      "PhiX spike-in higher than intended reducing effective coverage",
+      "Sample evaporation or pipetting error during library normalization",
+      "Large bases-before/after ratio: extreme adapter content consuming sequencing capacity"
+    ],
+    note: "Cross-check with pooling sheet. If one sample is low and another is high within the same pool, reciprocal molarity error is the most likely cause."
+  }
+];
+
+const catLabels = { lib: "Library prep", bio: "Biology/sample", seq: "Sequencing", qc: "QC/bioinformatics" };
+const catClass  = { lib: "tag-lib", bio: "tag-bio", seq: "tag-seq", qc: "tag-qc" };
+
+let activeFilter = "all";
+
+function renderCards() {
+  const container = document.getElementById("cards");
+  const countEl = document.getElementById("count");
+  const filtered = activeFilter === "all" ? DATA : DATA.filter(d => d.cats.includes(activeFilter));
+  countEl.textContent = filtered.length + " variable" + (filtered.length !== 1 ? "s" : "");
+  container.innerHTML = "";
+  filtered.forEach(d => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const tags = d.cats.map(c => `<span class="tag ${catClass[c]}">${catLabels[c]}</span>`).join(" ");
+    const devHigh = d.special ? buildSpecialHigh(d) : `<div class="devbox high"><div class="devbox-label">↑ HIGH / above cohort</div><p>${d.high}</p></div>`;
+    const devLow  = d.special ? buildSpecialLow(d)  : `<div class="devbox low"><div class="devbox-label">↓ LOW / near zero</div><p>${d.low}</p></div>`;
+    const flagItems = d.flags.map(f => `<li>${f}</li>`).join("");
+    card.innerHTML = `
+      <div class="card-header" onclick="toggle(this)">
+        <div style="flex:1;min-width:0">
+          <div class="var-name">${d.name}</div>
+          <div class="var-sub">${d.sub}</div>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${tags}</div>
+        </div>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="card-body">
+        <div class="section">
+          <div class="section-title">Deviation interpretation</div>
+          <div class="row2">${devHigh}${devLow}</div>
+        </div>
+        <div class="section">
+          <div class="section-title">Potential causes / flag logic</div>
+          <ul class="flag-list">${flagItems}</ul>
+        </div>
+        ${d.note ? `<div class="note">${d.note}</div>` : ""}
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+function buildSpecialHigh(d) {
+  return `<div class="devbox high"><div class="devbox-label">↑ Any filter count elevated</div><p>Examine per-category breakdown — elevated individual categories have distinct causes listed in the flag logic below.</p></div>`;
+}
+function buildSpecialLow(d) {
+  return `<div class="devbox low"><div class="devbox-label">↓ All counts near zero</div><p>Ideal outcome. All reads pass all quality, length, and N-content thresholds — clean library and run.</p></div>`;
+}
+
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const chev = header.querySelector(".chevron");
+  body.classList.toggle("open");
+  chev.classList.toggle("open");
+}
+
+document.getElementById("filters").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  activeFilter = btn.dataset.cat;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+  renderCards();
+});
+
+renderCards();
+</script>
